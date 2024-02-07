@@ -1,4 +1,5 @@
 # README for log-filter.sh
+Enhance your security log analysis workflow with this script, tailored for filtering FortiAnalyzer logs based on precise criteria such as date, time, VDOM, and policy ID.
 
 ## Introduction
 
