@@ -1,7 +1,3 @@
-Certainly! Below is the updated `README.md` for your script `log-filter.sh`, including the change to specify that the script is under the MIT License.
-
----
-
 # README for log-filter.sh
 
 ## Introduction
