@@ -1,7 +1,3 @@
-To update your `README.md` file to reflect the latest updates, including the introduction of a debug mode and an enhanced explanation on using the script, here's how it could look:
-
----
-
 # README for log-filter.sh
 
 Enhance your security log analysis workflow with `log-filter.sh`, a script tailored for filtering FortiAnalyzer logs based on precise criteria such as date, time, VDOM, and policy ID, now featuring a debug mode for detailed processing insights.
