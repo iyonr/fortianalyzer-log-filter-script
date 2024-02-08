@@ -4,7 +4,7 @@
 cat << "EOF"
  ___       ________ 
 |\  \     |\  _____\ File Name: log-filter.sh
-\ \  \    \ \  \__/  File Ver:  1.0
+\ \  \    \ \  \__/  File Ver:  2.0
  \ \  \    \ \   __\ Author: @iyonr
   \ \  \____\ \  \_| Email: mrr@isecuritylab.com
    \ \_______\ \__\ 
@@ -17,39 +17,22 @@ EOF
 # Script Name: log-filter.sh
 # Author: Marion Renaldo Rotensulu (@iyonr)
 # Email: mrr@isecuritylab.com
-# Version: 1.0
+# Version: 2.0
 # Copyright: (C) 2024 Marion Renaldo Rotensulu. All rights Reserved.
 # Description:
 # This script filters logs from FortiAnalyzer, tailored for logs
 # downloaded via LogView >> Log Browser function, suitable for
 # FortiAnalyzer version 7.4.2 build 2397.
 # Usage:
-# ./log-filter.sh -f <log_file> -s <start_date_time> -e <end_date_time> [-v <vd>] [-p <policyid>]
+# ./log-filter.sh -f <log_file> -s <start_date_time> -e <end_date_time> [-v <vd>] [-p <policyid>] [--debug]
 # Parameters:
 # -f Log file path (mandatory)
 # -s Start date and time in format YYYY-MM-DD HH:MM:SS (mandatory)
 # -e End date and time in format YYYY-MM-DD HH:MM:SS (mandatory)
 # -v Virtual Domain (optional)
 # -p Policy ID (optional)
-# Note: The script displays help if executed without any parameters.
+# --debug Activate debug mode (optional)
 # ---------------------------------------------------------------
-
-# Function to display help
-show_help() {
-    echo "Usage: $0 -f <log_file> -s <start_date_time> -e <end_date_time> [-v <vd>] [-p <policyid>]"
-    echo -e "\t-f Log file path"
-    echo -e "\t-s Start date and time in format YYYY-MM-DD HH:MM:SS"
-    echo -e "\t-e End date and time in format YYYY-MM-DD HH:MM:SS"
-    echo -e "\t-v Virtual Domain (optional)"
-    echo -e "\t-p Policy ID (optional)"
-    echo
-}
-
-# Check if no arguments were provided
-if [ $# -eq 0 ]; then
-    show_help
-    exit 1
-fi
 
 # Initialize variables
 log_file=""
@@ -57,97 +40,87 @@ start_datetime=""
 end_datetime=""
 vd=""
 policyid=""
+debug_mode=0
+
+# Function to display help
+show_help() {
+    echo "Usage: $0 -f <log_file> -s <start_date_time> -e <end_date_time> [-v <vd>] [-p <policyid>] [--debug]"
+    echo -e "\t-f Log file path"
+    echo -e "\t-s Start date and time in format YYYY-MM-DD HH:MM:SS"
+    echo -e "\t-e End date and time in format YYYY-MM-DD HH:MM:SS"
+    echo -e "\t-v Virtual Domain (optional)"
+    echo -e "\t-p Policy ID (optional)"
+    echo -e "\t--debug Activate debug mode"
+    echo
+}
 
 # Parse command line options
-while getopts ":hf:s:e:v:p:" opt; do
-    case ${opt} in
-        h )
-            show_help
-            exit 0
-            ;;
-        f )
-            log_file=$OPTARG
-            ;;
-        s )
-            start_datetime=$OPTARG
-            ;;
-        e )
-            end_datetime=$OPTARG
-            ;;
-        v )
-            vd=$OPTARG
-            ;;
-        p )
-            policyid=$OPTARG
-            ;;
-        \? )
-            echo "Invalid Option: -$OPTARG" 1>&2
-            show_help
-            exit 1
-            ;;
-        : )
-            echo "Invalid Option: -$OPTARG requires an argument" 1>&2
-            show_help
-            exit 1
-            ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -f) log_file="$2"; shift ;;
+        -s) start_datetime="$2"; shift ;;
+        -e) end_datetime="$2"; shift ;;
+        -v) vd="$2"; shift ;;
+        -p) policyid="$2"; shift ;;
+        --debug) debug_mode=1 ;;
+        -h|--help) show_help; exit 0 ;;
+        *) echo "Unknown option: $1"; show_help; exit 1 ;;
     esac
+    shift
 done
-shift $((OPTIND -1))
 
 # Check for mandatory options
-if [ -z "${log_file}" ] || [ -z "${start_datetime}" ] || [ -z "${end_datetime}" ]; then
+if [[ -z "$log_file" || -z "$start_datetime" || -z "$end_datetime" ]]; then
     echo "Error: Missing required arguments"
     show_help
     exit 1
 fi
 
-# Format input dates for comparison
-start_timestamp=$(date -d "$start_datetime" +%s)
-end_timestamp=$(date -d "$end_datetime" +%s)
+# Convert input dates to UTC timestamps for comparison
+start_timestamp=$(date -u -d "$start_datetime" +%s)
+end_timestamp=$(date -u -d "$end_datetime" +%s)
 
-# Run the filtering
-awk -v start="$start_timestamp" -v end="$end_timestamp" -v vd="$vd" -v policyid="$policyid" '
-function check_conditions(date, time, vd_field, policyid_field) {
-    # Convert log date and time to timestamp
-    gsub(/"/, "", date);
-    gsub(/"/, "", time);
-    datetime = date " " time;
-    timestamp = mktime(gensub(/-/, " ", "G", gensub(/:/, " ", "G", datetime)));
-
-    # Check date and time range
-    if (timestamp < start || timestamp > end) {
-        return 0;
-    }
-
-    # Check vd and policyid if provided
-    if (vd != "" && vd_field != "vd=\"" vd "\"") {
-        return 0;
-    }
-    if (policyid != "" && policyid_field != "policyid=" policyid) {
-        return 0;
-    }
-
-    return 1;
+# Process logs with or without debug mode
+awk -v start="$start_timestamp" -v end="$end_timestamp" -v vd="$vd" -v policyid="$policyid" -v debug="$debug_mode" '
+BEGIN {
+    FS=" ";
 }
 
 {
-    # Extract necessary fields
-    match($0, /date="[^"]+"/);
-    date = substr($0, RSTART, RLENGTH);
-    match($0, /time="[^"]+"/);
-    time = substr($0, RSTART, RLENGTH);
-    match($0, /vd="[^"]+"/);
-    vd_field = substr($0, RSTART, RLENGTH);
-    match($0, /policyid=[^ ]+/);
-    policyid_field = substr($0, RSTART, RLENGTH);
-    
-    # Print line if it meets conditions
-    if (check_conditions(date, time, vd_field, policyid_field)) {
-        print $0;
+    date = ""; time = ""; # Reset for each line
+    for (i = 1; i <= NF; i++) {
+        if ($i ~ /^date=/) {
+            split($i, arr, "=");
+            gsub(/"/, "", arr[2]);
+            date = arr[2];
+        }
+        if ($i ~ /^time=/) {
+            split($i, arr, "=");
+            gsub(/"/, "", arr[2]);
+            time = arr[2];
+        }
     }
-}' "$log_file"
+    
+    if (date && time) {
+        datetimeStr = date " " time;
+        gsub(/-|:/, " ", datetimeStr);
+        logTimestamp = mktime(datetimeStr " 0"); # Assumes UTC timezone
+        
+        if (logTimestamp >= start && logTimestamp <= end) {
+            if (debug) {
+                print "DEBUG: MATCH FOUND:", $0;
+            } else {
+                print $0;
+            }
+        } else if (debug) {
+            print "DEBUG: No match for this line.";
+        }
+    } else if (debug) {
+        print "DEBUG: Failed to extract date and time for line:", $0;
+    }
+}
+' "$log_file" > "${log_file%.log}_filtered_$(date +%Y%m%d_%H%M%S).log"
 
-# Save output to a file with a timestamp
-output_file="filtered_logs_$(date +%Y%m%d_%H%M%S).txt"
-awk -v start="$start_timestamp" -v end="$end_timestamp" -v vd="$vd" -v policyid="$policyid" '...' "$log_file" > "$output_file"
-echo "Filtered logs saved to $output_file"
+if [[ $debug_mode -eq 0 ]]; then
+    echo "Filtered logs saved to ${log_file%.log}_filtered_$(date +%Y%m%d_%H%M%S).log"
+fi
