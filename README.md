@@ -16,13 +16,45 @@ Enhance your security log analysis workflow with this script, tailored for filte
 - Bash shell (available on most Unix/Linux systems)
 - FortiAnalyzer logs in the specified format
 - `date` command support for timestamp operations (included in GNU coreutils)
+- GNU `awk` (`gawk`) for advanced string manipulation capabilities
+- FortiAnalyzer logs
 
 ## Installation
 
-1. **Download the Script:**
+
+1. **Installation GAWK:**
+   FortiLog-Filter uses GNU `awk` (`gawk`), which may not be the default on all systems. Here are the installation steps for different operating systems:
+
+   #### Debian/Ubuntu
+   ```sh
+   sudo apt update
+   sudo apt install gawk
+   ```
+   
+   #### Fedora
+   ```sh
+   sudo dnf install gawk
+   ```
+   
+   #### CentOS/RHEL
+   ```sh
+   sudo yum install gawk
+   ```
+   
+   #### macOS
+   First, install Homebrew if it's not already installed:
+   ```sh
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+   Then, install `gawk` using Homebrew:
+   ```sh
+   brew install gawk
+   ```
+
+3. **Download the Script:**
    - Clone the repository or directly download `log-filter.sh` from the provided link.
 
-2. **Make the Script Executable:**
+4. **Make the Script Executable:**
    - Navigate to the directory containing `log-filter.sh`.
    - Make the script executable with the following command:
      ```bash
